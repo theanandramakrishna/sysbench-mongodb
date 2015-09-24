@@ -246,6 +246,7 @@ public class jmongosysbenchexecute {
         int numMaxInserts;
         int numCollections;
         DB db;
+        TimeLogger _timeLogger;
 
         long numInserts = 0;
         long numDeletes = 0;
@@ -262,6 +263,16 @@ public class jmongosysbenchexecute {
             this.db = db;
             this.numCollections = numCollections;
             rand = new java.util.Random((long) threadNumber + rngSeed);
+            try 
+            {
+                _timeLogger = new TimeLogger(new BufferedWriter(
+                    new FileWriter(
+                        new File("exec.iotime." + threadNumber + ".txt"))));
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
         }
         public void run() {
             logMe("Writer thread %d : started",threadNumber);
@@ -302,6 +313,7 @@ public class jmongosysbenchexecute {
                         db.requestEnsureConnection();
                     }
 
+                    _timeLogger.log("Times for findOne");
                     for (int i=1; i <= oltpPointSelects; i++) {
                         //for i=1, oltp_point_selects do
                         //   rs = db_query("SELECT c FROM ".. table_name .." WHERE id=" .. sb_rand(1, oltp_table_size))
@@ -314,12 +326,17 @@ public class jmongosysbenchexecute {
                         BasicDBObject query = new BasicDBObject("_id", startId);
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
 
+                        long beforeNanos = System.nanoTime();
                         DBObject myDoc = coll.findOne(query, columns);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
+
                         //System.out.println(myDoc);
 
                         globalPointQueries.incrementAndGet();
                     }
 
+                    _timeLogger.log("Times for find");
                     for (int i=1; i <= oltpSimpleRanges; i++) {
                         //for i=1, oltp_simple_ranges do
                         //   range_start = sb_rand(1, oltp_table_size)
@@ -333,7 +350,11 @@ public class jmongosysbenchexecute {
 
                         BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        long beforeNanos = System.nanoTime();
                         DBCursor cursor = coll.find(query, columns);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
+
                         try {
                             while(cursor.hasNext()) {
                                 cursor.next();
@@ -345,6 +366,8 @@ public class jmongosysbenchexecute {
 
                         globalRangeQueries.incrementAndGet();
                     }
+
+                    _timeLogger.log("Times for aggregation");
 
                     for (int i=1; i <= oltpSumRanges; i++) {
                         //for i=1, oltp_sum_ranges do
@@ -370,13 +393,18 @@ public class jmongosysbenchexecute {
                         groupFields.put("average", new BasicDBObject( "$sum", "$k"));
                         DBObject group = new BasicDBObject("$group", groupFields);
 
+                        long beforeNanos = System.nanoTime();
                         // run aggregation
                         AggregationOutput output = coll.aggregate( match, project, group );
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
 
                         //System.out.println(output.getCommandResult());
 
                         globalRangeQueries.incrementAndGet();
                     }
+
+                    _timeLogger.log("Times for orderby");
 
                     for (int i=1; i <= oltpOrderRanges; i++) {
                         //for i=1, oltp_order_ranges do
@@ -391,7 +419,11 @@ public class jmongosysbenchexecute {
 
                         BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        long beforeNanos = System.nanoTime();
                         DBCursor cursor = coll.find(query, columns).sort(new BasicDBObject("c",1));
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
+
                         try {
                             while(cursor.hasNext()) {
                                 cursor.next();
@@ -403,6 +435,8 @@ public class jmongosysbenchexecute {
 
                         globalRangeQueries.incrementAndGet();
                     }
+
+                    _timeLogger.log("Times for distinct");
 
                     for (int i=1; i <= oltpDistinctRanges; i++) {
                         //for i=1, oltp_distinct_ranges do
@@ -417,11 +451,17 @@ public class jmongosysbenchexecute {
 
                         BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        long beforeNanos = System.nanoTime();
                         List lstDistinct = coll.distinct("c", query);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
+
                         //System.out.println(lstDistinct.toString());
 
                         globalRangeQueries.incrementAndGet();
                     }
+
+                    _timeLogger.log("Times for index update");
 
                     for (int i=1; i <= oltpIndexUpdates; i++) {
                         //for i=1, oltp_index_updates do
@@ -432,11 +472,16 @@ public class jmongosysbenchexecute {
 
                         int startId = rand.nextInt(numMaxInserts)+1;
 
+                        long beforeNanos = System.nanoTime();
                         WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$inc", new BasicDBObject("k",1)), false, false);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
     
                         //System.out.println(wrUpdate.toString());
                     }
     
+                    _timeLogger.log("Times for nonindex update");
+
                     for (int i=1; i <= oltpNonIndexUpdates; i++) {
                         //for i=1, oltp_non_index_updates do
                         //   c_val = sb_rand_str("###########-###########-###########-###########-###########-###########-###########-###########-###########-###########")
@@ -453,10 +498,15 @@ public class jmongosysbenchexecute {
 
                         String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
 
+                        long beforeNanos = System.nanoTime();
                         WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$set", new BasicDBObject("c",cVal)), false, false);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
 
                         //System.out.println(wrUpdate.toString());
                     }
+
+                    _timeLogger.log("Times for inserts");
 
                     for (int i=1; i <= oltpInserts; i++) {
                         //i = sb_rand(1, oltp_table_size)
@@ -479,7 +529,11 @@ public class jmongosysbenchexecute {
                         doc.put("c",cVal);
                         String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
                         doc.put("pad",padVal);
+
+                        long beforeNanos = System.nanoTime();
                         WriteResult wrInsert = coll.insert(doc);
+                        long afterNanos = System.nanoTime();
+                        _timeLogger.log(afterNanos - beforeNanos);
                     }
 
                     globalSysbenchTransactions.incrementAndGet();
@@ -500,6 +554,7 @@ public class jmongosysbenchexecute {
             //    e.printStackTrace();
             //}
 
+            _timeLogger.close();
             globalWriterThreads.decrementAndGet();
         }
     }
