@@ -123,6 +123,9 @@ public class jmongosysbenchexecute {
         else if ((myWriteConcern.toLowerCase().equals("safe"))) {
             myWC = WriteConcern.SAFE;
         }
+        else if ((myWriteConcern.toLowerCase().equals("journal_safe"))) {
+            myWC = WriteConcern.JOURNAL_SAFE;
+        }
         else {
             logMe("*** ERROR : WRITE CONCERN ISSUE ***");
             logMe("  write concern %s is not supported",myWriteConcern);
