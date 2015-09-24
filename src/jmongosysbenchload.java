@@ -86,6 +86,9 @@ public class jmongosysbenchload {
         else if ((myWriteConcern.toLowerCase().equals("safe"))) {
             myWC = WriteConcern.SAFE;
         }
+        else if ((myWriteConcern.toLowerCase().equals("journal_safe"))) {
+            myWC = WriteConcern.JOURNAL_SAFE;
+        }
         else {
             logMe("*** ERROR : WRITE CONCERN ISSUE ***");
             logMe("  write concern %s is not supported",myWriteConcern);
@@ -239,7 +242,7 @@ public class jmongosysbenchload {
         int numTables;
         int numMaxInserts;
         DB db;
-
+        TimeLogger _timeLogger;
         java.util.Random rand;
 
         MyWriter(int collectionNumber, int threadCount, int threadNumber, int numMaxInserts, DB db) {
@@ -249,6 +252,16 @@ public class jmongosysbenchload {
             this.numMaxInserts = numMaxInserts;
             this.db = db;
             rand = new java.util.Random((long) collectionNumber);
+            try 
+            {
+                _timeLogger = new TimeLogger(
+                    new BufferedWriter(new FileWriter(
+                        new File("iotimes." + threadNumber + ".txt"))));
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
         }
         public void run() {
             String collectionName = "sbtest" + Integer.toString(collectionNumber);
@@ -309,7 +322,12 @@ public class jmongosysbenchload {
                         aDocs[i]=doc;
                     }
 
+                    long beforeNanos = System.nanoTime();
                     coll.insert(aDocs);
+                    long afterNanos = System.nanoTime();
+
+                    _timeLogger.log(afterNanos - beforeNanos);
+
                     numInserts += documentsPerInsert;
                     globalInserts.addAndGet(documentsPerInsert);
                 }
@@ -319,6 +337,7 @@ public class jmongosysbenchload {
                 e.printStackTrace();
             }
 
+            _timeLogger.close();
             globalWriterThreads.decrementAndGet();
         }
     }

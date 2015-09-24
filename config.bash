@@ -6,7 +6,7 @@ export DB_NAME=sbtest
 # database username on DB_NAME
 #  Use USERNAME=none 
 #  to login to mongodb without using credentials.
-export USERNAME=myuser
+export USERNAME=none
 
 # database password to use for USERNAME
 export PASSWORD=mypass
@@ -61,8 +61,8 @@ export RUN_TIME_MINUTES=10
 export RUN_TIME_SECONDS=$[RUN_TIME_MINUTES*60]
 
 # write concern for the benchmark client
-#   valid values : FSYNC_SAFE, NONE, NORMAL, REPLICAS_SAFE, SAFE
-export WRITE_CONCERN=SAFE
+#   valid values : FSYNC_SAFE, NONE, NORMAL, REPLICAS_SAFE, SAFE, JOURNAL_SAFE
+export WRITE_CONCERN=JOURNAL_SAFE
 
 # total number of transactions per second, allows for the benchmark to be rate limited
 #   valid values : integer > 0

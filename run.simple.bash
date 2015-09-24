@@ -20,6 +20,8 @@ else
    exit 1
 fi
 
+export CLASSPATH=$CLASSPATH:./mongo-java-driver-2.13.0.jar
+
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchload.java
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchexecute.java
 
